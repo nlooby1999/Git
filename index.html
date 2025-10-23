@@ -25,9 +25,16 @@
     }
     .app{max-width:1200px;margin:0 auto;padding:clamp(1.5rem,5vw,3.5rem) clamp(1rem,4vw,3.25rem) 4rem}
     header{text-align:center;margin-bottom:clamp(1.2rem,4vw,2rem)}
-    h1{margin:0;font-size:clamp(2.1rem,6vw,3.1rem);letter-spacing:.08em;text-transform:uppercase;color:var(--text);
+    header h1{margin:0;font-size:clamp(2.1rem,6vw,3.1rem);letter-spacing:.08em;text-transform:uppercase;color:var(--text);
        text-shadow:0 16px 38px rgba(14,165,233,.35)}
     header p{margin:.7rem auto 0;max-width:62ch;font-size:clamp(1.05rem,3.2vw,1.2rem);line-height:1.6;color:var(--text-subtle)}
+    .auth-actions{margin-top:.9rem;display:flex;justify-content:center}
+    .logout-btn{
+      padding:.6rem 1rem;border-radius:12px;border:1px solid rgba(239,68,68,.55);
+      background:rgba(239,68,68,.16);color:#fecaca;font-weight:600;letter-spacing:.03em;
+      cursor:pointer;display:none;
+    }
+    .logout-btn:hover{background:rgba(239,68,68,.24)}
 
     /* Tabs */
     .tabs{display:flex;gap:.6rem;justify-content:center;margin:.8rem 0 1.2rem;flex-wrap:wrap}
@@ -56,6 +63,12 @@
     .clear-btn{background:var(--danger);border-color:rgba(248,113,113,.45);color:var(--danger-text)}
     .report-btn{background:rgba(56,189,248,.12);border-color:rgba(56,189,248,.45);color:var(--accent)}
     .file-meta{font-size:.9rem;color:var(--text-subtle);text-align:center;margin-top:.2rem}
+    .admin-targets{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.4rem}
+    .admin-targets label{display:flex;align-items:center;gap:.35rem;padding:.45rem .6rem;border:1px solid rgba(148,163,184,.28);
+      border-radius:10px;background:rgba(15,23,42,.65);font-size:.9rem;cursor:pointer}
+    .admin-targets input[type="checkbox"]{width:16px;height:16px;cursor:pointer}
+    body.auth-locked{overflow:hidden}
+    body.auth-locked .app{filter:blur(6px);pointer-events:none;user-select:none}
     .scanned-summary{
       margin:.9rem 0 0;
       padding:1rem 1.1rem;
@@ -71,6 +84,29 @@
       z-index:6;
       backdrop-filter:blur(14px);
     }
+    .auth-overlay{
+      position:fixed;inset:0;background:rgba(2,6,23,.92);display:none;
+      align-items:center;justify-content:center;z-index:999;
+    }
+    .auth-overlay.show{display:flex}
+    .auth-card{
+      background:rgba(15,23,42,.95);border-radius:22px;border:1px solid rgba(148,163,184,.22);
+      box-shadow:0 32px 70px rgba(2,6,23,.65);padding:2.2rem;min-width:280px;max-width:360px;
+      display:grid;gap:1rem;font-size:1rem;color:var(--text);
+    }
+    .auth-card h2{margin:0;font-size:1.4rem;text-align:center;letter-spacing:.04em}
+    .auth-card label{display:flex;flex-direction:column;gap:.4rem;font-size:.95rem;color:var(--text-subtle)}
+    .auth-card select,.auth-card input{
+      padding:.75rem .9rem;border-radius:12px;border:1px solid rgba(148,163,184,.35);
+      background:rgba(11,17,32,.92);color:var(--text);font-size:1rem;
+    }
+    .auth-error{color:#fca5a5;font-size:.9rem;display:none;text-align:center}
+    .auth-card button{
+      margin-top:.5rem;padding:.75rem 1rem;border-radius:12px;border:1px solid rgba(56,189,248,.55);
+      background:linear-gradient(120deg,var(--accent),var(--accent-strong));color:#0f172a;
+      font-size:1rem;font-weight:700;cursor:pointer;
+    }
+    .auth-card button:disabled{opacity:.6;cursor:not-allowed}
 
     /* Table */
     .table-wrapper{margin-top:clamp(1.2rem,3vw,1.8rem);border-radius:20px;border:1px solid rgba(148,163,184,.2);background:var(--bg-alt);
@@ -94,11 +130,15 @@
     <header>
       <h1>Delivery Run Manager</h1>
       <p>Upload your manifest(s) and scan consignments.</p>
+      <div class="auth-actions">
+        <button id="auth_logout" class="logout-btn" type="button">Logout</button>
+      </div>
     </header>
 
     <div class="tabs" role="tablist" aria-label="Marking Views">
       <button id="tab-final" class="tab-btn" role="tab" aria-selected="true" aria-controls="panel-final">Final Marking</button>
       <button id="tab-glue" class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-glue">Glueline Marking</button>
+      <button id="tab-admin" class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-admin" style="display:none;">Admin</button>
     </div>
 
     <!-- Final Marking Panel -->
@@ -111,7 +151,7 @@
           <input type="text" id="final_scan" class="scanner-input" placeholder="Scan or enter barcode" disabled
                  autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="go">
           <div class="clear-btn" id="final_clear" tabindex="0">Clear Final</div>
-          <div class="report-btn" id="final_export" tabindex="0">Download Final Report</div>
+          <div class="report-btn" id="final_export" tabindex="0">Send Final Report</div>
         </div>
         <!-- Final status injected -->
       </section>
@@ -128,7 +168,7 @@
           <input type="text" id="glue_scan" class="scanner-input" placeholder="Scan or enter barcode" disabled
                  autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="go">
           <div class="clear-btn" id="glue_clear" tabindex="0">Clear Glueline</div>
-          <div class="report-btn" id="glue_export" tabindex="0">Download Glueline Report</div>
+          <div class="report-btn" id="glue_export" tabindex="0">Send Glueline Report</div>
           <div class="report-btn" id="glue_filter_clear" tabindex="0" style="display:none;">Show All Orders</div>
         </div>
         <!-- Glueline status injected -->
@@ -136,6 +176,44 @@
       <div id="glue_scanned_summary" class="scanned-summary"></div>
       <div id="glue_schedule_table" class="table-wrapper"><div class="table-scroll"></div></div>
     </section>
+
+    <section id="panel-admin" class="panel" role="tabpanel" aria-labelledby="tab-admin">
+      <section class="card" aria-label="Administration controls">
+        <div class="controls">
+          <input type="file" id="admin_upload" class="file-input" accept=".xlsx,.xls" />
+          <div class="file-meta" id="admin_meta">No shared manifest uploaded.</div>
+          <div class="report-btn" id="admin_push_final" tabindex="0">Push to Final</div>
+          <div class="report-btn" id="admin_push_glue" tabindex="0">Push to Glueline</div>
+          <div class="admin-targets" id="admin_targets"></div>
+          <div class="admin-targets" id="admin_targets"></div>
+        </div>
+        <div id="admin_preview" class="table-wrapper"><div class="table-scroll"></div></div>
+      </section>
+      <section class="card" aria-label="Submitted reports">
+        <div class="controls">
+          <div class="file-meta" id="admin_reports_meta">No reports submitted.</div>
+        </div>
+        <div id="admin_reports_table" class="table-wrapper"><div class="table-scroll"></div></div>
+      </section>
+    </section>
+  </div>
+
+  <div id="auth_overlay" class="auth-overlay" role="dialog" aria-modal="true" aria-labelledby="auth_title">
+    <form class="auth-card" id="auth_form">
+      <h2 id="auth_title">Depot Login</h2>
+      <label>
+        Depot
+        <select id="auth_user" required>
+          <option value="" disabled selected>Select depot</option>
+        </select>
+      </label>
+      <label>
+        Password
+        <input type="password" id="auth_pass" placeholder="Enter password" autocomplete="off" required>
+      </label>
+      <div id="auth_error" class="auth-error" role="alert"></div>
+      <button id="auth_login" type="submit">Sign In</button>
+    </form>
   </div>
 
   <!-- SheetJS for Excel parsing (local copy for offline use) -->
