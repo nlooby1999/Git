@@ -1,7 +1,33 @@
-﻿(() => {
+(() => {
   function init(){
     // Column positions from the manifest sheets
     const COL_SO = 4, COL_FP = 10, COL_CH = 11, COL_FL = 12;
+
+    let loadingXLSX = null;
+    async function ensureXLSX(){
+      if (typeof XLSX !== 'undefined') return true;
+      if (!loadingXLSX){
+        loadingXLSX = new Promise((resolve, reject)=>{
+          const script = document.createElement('script');
+          script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+          script.async = true;
+          script.crossOrigin = 'anonymous';
+          script.referrerPolicy = 'no-referrer';
+          script.dataset.fallback = 'xlsx';
+          script.onload = ()=> resolve(true);
+          script.onerror = (err)=> reject(err || new Error('Failed to load fallback XLSX parser'));
+          document.head.appendChild(script);
+        });
+      }
+      try{
+        await loadingXLSX;
+      }catch(err){
+        console.error('Unable to load XLSX fallback', err);
+        loadingXLSX = null;
+        return false;
+      }
+      return typeof XLSX !== 'undefined';
+    }
 
     function MarkingModule(prefix){
       const fileEl         = document.getElementById(prefix + '_file');
@@ -442,9 +468,9 @@
       async function handleFiles(fileList){
         if (!hasRunsheetUI) return;
         if(!fileList || !fileList.length) return;
-        if (typeof XLSX === 'undefined'){
-          toast('Excel parser not available. Refresh the page or install the offline bundle.', 'error');
-          fileEl.value = '';
+        if (!(await ensureXLSX())){
+          toast('Excel parser not available. Check your connection and try again.', 'error');
+          if (fileEl) fileEl.value='';
           return;
         }
         try{
@@ -498,9 +524,9 @@
       async function handleSchedule(fileList){
         if (!hasScheduleUI) return;
         if(!fileList || !fileList.length) return;
-        if (typeof XLSX === 'undefined'){
-          toast('Excel parser not available. Refresh the page or install the offline bundle.', 'error');
-          scheduleFileEl.value = '';
+        if (!(await ensureXLSX())){
+          toast('Excel parser not available. Check your connection and try again.', 'error');
+          if (scheduleFileEl) scheduleFileEl.value='';
           return;
         }
         try{
