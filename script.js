@@ -70,6 +70,9 @@
       let scheduleEntries = [];
       let filteredSO = null;
       let lastScanInfo = null;
+      let autoScanTimer = null;
+      const AUTOSCAN_DELAY = 120;
+      const MIN_BARCODE_LENGTH = 8;
 
       const normSO = v => (v == null ? '' : String(v).trim().toUpperCase());
       const extractSO = v => {
@@ -293,6 +296,7 @@
         if (hasScheduleUI) scheduleEntries=[];
         filteredSO = null;
         lastScanInfo = null;
+        if (autoScanTimer){ clearTimeout(autoScanTimer); autoScanTimer=null; }
         if (hasRunsheetUI && tableWrap) tableWrap.innerHTML='<div class="table-scroll"></div>';
         if (hasScheduleUI && scheduleWrap) scheduleWrap.innerHTML='<div class="table-scroll"></div>';
         scanEl.disabled = true;
@@ -579,18 +583,18 @@
 
       function handleScan(raw){
         const s = raw ? String(raw).trim() : '';
-        if(!s) return;
-        if (s.length<=3){ toast('Barcode is too short.','error'); shakeInput(); return; }
+        if(!s) return false;
+        if (s.length<=3){ toast('Barcode is too short.','error'); shakeInput(); return false; }
         const code = s.toUpperCase();
         const so = code.slice(0,-3);
         const known = generated[so];
-        if(!known || !known.includes(code)){ toast('Sales Order not found or barcode invalid.','error'); shakeInput(); return; }
+        if(!known || !known.includes(code)){ toast('Sales Order not found or barcode invalid.','error'); shakeInput(); return false; }
         if(!scanned[so]) scanned[so]=new Set();
         const preventDuplicates = hasRunsheetUI;
         if (preventDuplicates && scanned[so].has(code)){
           toast('This barcode has already been scanned.','info');
           focusScan();
-          return;
+          return false;
         }
         scanned[so].add(code);
         const scannedCount = scanned[so].size;
@@ -601,19 +605,37 @@
         updateRowHighlight(so);
         lastScanInfo = { so, run, drop };
         updateSummaryDisplay();
+        if (autoScanTimer){ clearTimeout(autoScanTimer); autoScanTimer=null; }
         save();
         focusScan();
         const statusText = hasRunsheetUI
           ? `Marked 1 / ${total} for ${so}`
           : `Run ${run || '-'} / Drop ${drop || '-'} for ${so}`;
         toast(statusText,'success');
+        return true;
       }
 
       scanEl.addEventListener('keydown', (e)=>{
         if(e.key==='Enter'){
-          handleScan(e.target.value);
-          e.target.value='';
+          const ok = handleScan(e.target.value);
+          if(ok) e.target.value='';
         }
+      });
+
+      scanEl.addEventListener('input', ()=>{
+        if (scanEl.disabled) return;
+        const value = scanEl.value ? scanEl.value.trim() : '';
+        if (!value){
+          if (autoScanTimer){ clearTimeout(autoScanTimer); autoScanTimer=null; }
+          return;
+        }
+        if (value.length < MIN_BARCODE_LENGTH) return;
+        if (autoScanTimer) clearTimeout(autoScanTimer);
+        autoScanTimer = setTimeout(()=>{
+          autoScanTimer = null;
+          const ok = handleScan(value);
+          if (ok) scanEl.value='';
+        }, AUTOSCAN_DELAY);
       });
 
       if (fileEl) fileEl.addEventListener('change', (e)=>{ handleFiles(e.target.files); });
