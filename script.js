@@ -72,7 +72,7 @@
       let lastScanInfo = null;
       let autoScanTimer = null;
       const AUTOSCAN_DELAY = 120;
-      const MIN_BARCODE_LENGTH = 8;
+      const MIN_BARCODE_LENGTH = 11;
 
       const normSO = v => (v == null ? '' : String(v).trim().toUpperCase());
       const extractSO = v => {
@@ -584,7 +584,7 @@
       function handleScan(raw){
         const s = raw ? String(raw).trim() : '';
         if(!s) return false;
-        if (s.length<=3){ toast('Barcode is too short.','error'); shakeInput(); return false; }
+        if (s.length < MIN_BARCODE_LENGTH){ toast(`Barcode must be ${MIN_BARCODE_LENGTH} characters.`, 'error'); shakeInput(); return false; }
         const code = s.toUpperCase();
         const so = code.slice(0,-3);
         const known = generated[so];
